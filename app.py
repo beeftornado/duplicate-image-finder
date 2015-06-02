@@ -171,7 +171,7 @@ def main(*args, **kwargs):
     print "Please wait for initial image scan to complete..."
 
     # Create a worker pool to hash the images over multiple cpus
-    worker_pool = Pool(processes=cpu_count(), initializer=init_worker, maxtasksperchild=100)
+    worker_pool = Pool(processes=cpus, initializer=init_worker, maxtasksperchild=100)
     worker_results = []
 
     # Cache all the image hashes ahead of time so user can see progress
@@ -256,6 +256,7 @@ if __name__ == '__main__':
     defaults = {
         'confidence_threshold': 90,
         'start_dir': '.',
+        'cpus': cpu_count(),
     }
     locals().update(defaults)
 
@@ -264,6 +265,10 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--confidence', dest='confidence_threshold', type=int,
                         help='at what percent (1-100) similarity should photos be flagged (default {})'.format(
                             defaults['confidence_threshold']))
+    parser.add_argument('--cpus', type=int,
+                        help='override number of cpu cores to use, default is to utilize all of them (default {})'.format(
+                            defaults['cpus']
+                        ))
     group = parser.add_mutually_exclusive_group()
     group.add_argument('-d', '--directory', dest='start_dir', type=str,
                        help='folder to start looking for photos')
@@ -277,6 +282,8 @@ if __name__ == '__main__':
         start_dir = args.start_dir
     if args.osxphotos:
         start_dir = os.path.expanduser("{}/Masters/".format(osx_photoslibrary_location()))
+    if args.cpus:
+        cpus = args.cpus
 
     main(**locals())
 
