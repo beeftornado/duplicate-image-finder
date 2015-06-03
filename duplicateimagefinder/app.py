@@ -11,6 +11,8 @@ from tqdm import *
 
 from __init__ import *
 from enums import *
+from output_formats import outputter_for_format
+from output_formats.base import OutputRecord
 from utils import *
 
 
@@ -204,13 +206,10 @@ def main(*args, **kwargs):
             similarity = (64 - dist) * 100 / 64
 
             if similarity > confidence_threshold:
-                similar_pairs.append([image_path, image_path2, dist, similarity])
+                similar_pairs.append(OutputRecord(image_path, image_path2, dist, similarity))
 
-    # List the images that are similar to each other
-    for similar in similar_pairs:
-        print "%s is %d%% similar to %s" % (
-            similar[0], similar[3], similar[1]
-        )
+    # Print the results
+    outputter_for_format(output).output(similar_pairs)
 
     print ""
 
@@ -251,6 +250,8 @@ if __name__ == '__main__':
         start_dir = os.path.expanduser("{}/Masters/".format(osx_photoslibrary_location()))
     if args.cpus:
         cpus = args.cpus
+    if args.format:
+        output = Formats.from_option(args.format)
 
     main(**locals())
 

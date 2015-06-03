@@ -6,7 +6,7 @@ This is a python script so requires python 2.7 or higher. While it was tested on
 
 ```sh
 usage: app.py [-h] [-c CONFIDENCE_THRESHOLD] [--cpus CPUS]
-              [-d START_DIR | --osxphotos]
+              [-d START_DIR | --osxphotos] [-f FORMAT]
 
 Identify duplicate images in large libraries on the hard drive.
 
@@ -20,6 +20,9 @@ optional arguments:
   -d START_DIR, --directory START_DIR
                         folder to start looking for photos
   --osxphotos           scan the Photos app library on Mac
+  -f FORMAT, --format FORMAT
+                        how do you want the list of photos presented to you
+                        (human/default, json, csv, table)
 ```
 
 ## Description
