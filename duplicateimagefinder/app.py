@@ -29,6 +29,9 @@ class ImageUtils(object):
     persistent_store = FileBackend("hashes.db")
     persistent_store.create_index(ImageHash, 'name')
 
+    # For accurate ETA estimates, track how many new hashes were completed
+    new_hash_count = 0
+
     @classmethod
     def lookup_file(cls, filename):
         """
@@ -70,6 +73,7 @@ class ImageUtils(object):
             cls.backend_lock.acquire()
             cls.persistent_store.save(r)
             cls.backend_lock.release()
+            cls.new_hash_count += 1
 
         cls.saved_hashes[key] = value
 
@@ -154,8 +158,8 @@ def main(*args, **kwargs):
         while True:
             done = sum(r.ready() for r in worker_results)
             elapsed = time.time() - started
-            rate = int(done / elapsed)
-            eta = int((total - done) / float(rate)) if done > 0 else None
+            rate = int(ImageUtils.new_hash_count / elapsed)
+            eta = int((total - done) / float(rate)) if done > 0 and rate > 0 else None
             print_progress(int(float(done)/total*100), rate, eta)
             # if all(r.ready() for r in worker_results):
             if done == total:
