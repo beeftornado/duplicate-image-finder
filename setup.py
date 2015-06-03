@@ -18,8 +18,10 @@ setup(name=about["__title__"],
       author_email=about["__email__"],
       url=about["__uri__"],
       install_requires=[
-          'Pillow>=2.5',
-          'tqdm>=1.0'],
+          'Pillow>=2.8',
+          'tqdm>=1.0',
+          'blitzdb==0.2.12',
+          'six==1.9.0'],
       packages=find_packages(),
       entry_points={
           'console_scripts': [

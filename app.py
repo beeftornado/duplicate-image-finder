@@ -9,10 +9,15 @@ import signal
 import sys
 import time
 
+from blitzdb import FileBackend, Document
 from PIL import Image
 from tqdm import *
 
 from __init__ import *
+
+
+class ImageHash(Document):
+    pass
 
 
 def hijack_print():
@@ -61,7 +66,7 @@ def print_progress(progress, rate=None, eta=None):
     bars_not_done = bars_to_show - bars_done
     rate_str = '({} per second)'.format(rate) if rate else ''
     eta_str = '({}:{} remaining)'.format(eta/60, str(eta%60).zfill(2)) if eta != None else ''
-    sys.stdout.old_write('\r[{0}{1}] {2}% {3} {4}  '.format('#'*bars_done, '-'*bars_not_done, progress, rate_str, eta_str))
+    sys.stdout.old_write('\r[{0}{1}] {2}% {3} {4} {5}'.format('#'*bars_done, '-'*bars_not_done, progress, rate_str, eta_str, ' '*10))
     sys.stdout.flush()
     if progress >= 100:
         print ""
@@ -108,17 +113,69 @@ class MethodProxy(object):
 
 
 class ImageUtils(object):
+
+    # In-memory hashes that we've encountered during the scan
     saved_hashes = dict()
+
+    backend_lock = Lock()
+    persistent_store = FileBackend("hashes.db")
+    persistent_store.create_index(ImageHash, 'name')
+
+    @classmethod
+    def lookup_file(cls, filename):
+        """
+        Check the database for images with this file path
+        """
+        try:
+            return cls.persistent_store.get(ImageHash, {'name': filename})
+        except ImageHash.DoesNotExist:
+            pass
+        except ImageHash.MultipleDocumentsReturned:
+            cls.persistent_store.delete(ImageHash({'name': filename}))
+            raise
+        return None
 
     @classmethod
     def save_hash(cls, key, value):
+        """
+        Saves a json record of image file path to it's hash and the last modified date of the image.
+
+        Since this method gets called in the parent thread as a callback to when workers finish calculating a
+        hash, we have no way of knowing whether it is new or not so this method checks the last modified time
+        stamp and only does the save if it is stale.
+        """
+
+        current_mtime = os.stat(key).st_mtime
+        should_save_record = True
+
+        # Delete existing record if it exist because file based db doesn't support updating
+        i = cls.lookup_file(key)
+        if i:
+            if i.created != current_mtime:
+                cls.persistent_store.delete(i)
+            else:
+                should_save_record = False
+
+        # Save new record
+        if should_save_record:
+            r = ImageHash({'name': key, 'hash': value, 'created': os.stat(key).st_mtime})
+            cls.backend_lock.acquire()
+            cls.persistent_store.save(r)
+            cls.backend_lock.release()
+
         cls.saved_hashes[key] = value
 
     @classmethod
     def hash(cls, image, filename=None):
-        # Return already calculated hash
+        # Return already calculated hash in memory
         if cls.saved_hashes.get(filename, None):
             return cls.saved_hashes.get(filename, None)
+        # Return already calculated hash in db
+        i = cls.lookup_file(filename)
+        if i:
+            # Check if image has not been modified since last hash
+            if i.created >= os.stat(filename).st_mtime:
+                return i.hash
         if not isinstance(image, Image.Image):
             # Check if file is an image
             try:
@@ -130,7 +187,6 @@ class ImageUtils(object):
         avhash = reduce(lambda x, (y, z): x | (z << y),
                         enumerate(map(lambda i: 0 if i < avg else 1, image.getdata())),
                         0)
-        cls.saved_hashes[filename] = avhash
         return avhash
 
     @staticmethod
@@ -185,13 +241,13 @@ def main(*args, **kwargs):
 
     # This block basically prints out the progress os hashing is done and allows graceful exit if user quits
     try:
-        done, elapsed, total, started = 0, 0, len(worker_results), time.clock()
+        done, elapsed, total, started = 0, 0, len(worker_results), time.time()
         worker_pool.close()
         while True:
             done = sum(r.ready() for r in worker_results)
-            elapsed = time.clock() - started
-            rate = int((done / elapsed) / 1000)
-            eta = int((total - done) / ((done / elapsed) / 1000)) if done > 0 else None
+            elapsed = time.time() - started
+            rate = int(done / elapsed)
+            eta = int((total - done) / float(rate)) if done > 0 else None
             print_progress(int(float(done)/total*100), rate, eta)
             # if all(r.ready() for r in worker_results):
             if done == total:
@@ -203,13 +259,15 @@ def main(*args, **kwargs):
         print "Caught KeyboardInterrupt, terminating workers"
         worker_pool.terminate()
         worker_pool.join()
+        ImageUtils.persistent_store.commit()
         exit(1)
     else:
         worker_pool.join()
+        ImageUtils.persistent_store.commit()
 
     # Comparison
     print ""
-    print "LOOKING FOR DUPLICATES:"
+    print "Comparing the images..."
 
     # Compare each image to every other image
     for idx, image_path in enumerate(tqdm(images)):

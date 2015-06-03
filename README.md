@@ -30,11 +30,8 @@ This utility actually examines the content of the image and comes up with a perc
 
 I saw plenty of solutions online, but they either cost too much money for such a simple task, or it wasn't configurable enough or performant enough. All of these qualities I hope to tackle here. Free, uses all available cpu power, and a confidence threshold option.
 
-## Known Limitations
-There is no caching done of the image hashes so re-running it on the same directory several times takes just as long as the first time.
-
 ## How It Works
-I hope to describe this in further detail soon, but for the sake of time, it computes a hash, which is an almost unique identifier for each image. Then it compares all of the pictures' hashes to each other and produces what is called a "hamming score" for each pair of pictures. This is a description of how similar the content of the photos are. We then convert that number into a percentage so it is easier to comprehend.
+There is absolutely nothing fancy going on here. I just combined some fancy tricks I found in blog posts. I hope to describe this in further detail soon, but for the sake of time, it computes a hash, which is an almost unique identifier for each image. Then it compares all of the pictures' hashes to each other and produces what is called a "hamming score" for each pair of pictures. This is a description of how similar the content of the photos are. We then convert that number into a percentage so it is easier to comprehend.
 
 ## Future Improvements
-The first thing I would really like to do is save all the computed hashes so that incremental comparisons won't be an issue when new photos are imported.
+* Option to change output format
