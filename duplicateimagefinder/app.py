@@ -173,6 +173,9 @@ def main(*args, **kwargs):
         worker_pool.join()
         ImageUtils.persistent_store.commit()
 
+    if only_index:
+        return
+
     # Comparison
     print ""
     print "Comparing the images..."
@@ -221,6 +224,7 @@ if __name__ == '__main__':
         'start_dir': '.',
         'cpus': cpu_count(),
         'output': Formats.HUMAN_READABLE,
+        'only_index': False,
     }
     locals().update(defaults)
 
@@ -240,6 +244,8 @@ if __name__ == '__main__':
                        help='scan the Photos app library on Mac', action='store_true')
     parser.add_argument('-f', '--format',
                         help='how do you want the list of photos presented to you (human/default, json, csv, table)')
+    parser.add_argument('--index',
+                       help='only index the photos and skip comparison and output steps', action='store_true')
 
     args = parser.parse_args()
     if args.confidence_threshold:
@@ -252,6 +258,8 @@ if __name__ == '__main__':
         cpus = args.cpus
     if args.format:
         output = Formats.from_option(args.format)
+    if args.index:
+        only_index = args.index
 
     main(**locals())
 

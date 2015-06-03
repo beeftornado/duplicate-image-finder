@@ -6,7 +6,7 @@ This is a python script so requires python 2.7 or higher. While it was tested on
 
 ```sh
 usage: app.py [-h] [-c CONFIDENCE_THRESHOLD] [--cpus CPUS]
-              [-d START_DIR | --osxphotos] [-f FORMAT]
+              [-d START_DIR | --osxphotos] [-f FORMAT] [--index]
 
 Identify duplicate images in large libraries on the hard drive.
 
@@ -23,6 +23,8 @@ optional arguments:
   -f FORMAT, --format FORMAT
                         how do you want the list of photos presented to you
                         (human/default, json, csv, table)
+  --index               only index the photos and skip comparison and output
+                        steps
 ```
 
 ## Description
