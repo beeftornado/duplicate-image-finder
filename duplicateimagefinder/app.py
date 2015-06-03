@@ -126,7 +126,9 @@ def main(*args, **kwargs):
     images = []
     for root, dirnames, filenames in os.walk(start_dir):
         for filename in fnmatch.filter(filenames, '*.*'):
-            images.append(os.path.join(root, filename))
+            # Don't include any thumbnail or other junk from iPhoto/Photos
+            if not '.photoslibrary' in root or 'Masters' in root:
+                images.append(os.path.join(root, filename))
 
     file_count = len(images)
     print "%d files to process in %s" % (file_count, start_dir)
