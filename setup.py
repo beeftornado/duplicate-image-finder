@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import os
+
 from ez_setup import use_setuptools
 
 use_setuptools()
@@ -8,7 +10,7 @@ from setuptools import setup
 from setuptools import find_packages
 
 about = {}
-with open("__init__.py") as fp:
+with open(os.path.join("duplicateimagefinder", "__init__.py")) as fp:
     exec(fp.read(), about)
 
 setup(name=about["__title__"],
@@ -25,7 +27,7 @@ setup(name=about["__title__"],
       packages=find_packages(),
       entry_points={
           'console_scripts': [
-              'app=app:main',
+              'app = duplicateimagefinder.app:main',
           ],
       },
 )

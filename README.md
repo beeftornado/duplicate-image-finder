@@ -35,3 +35,4 @@ There is absolutely nothing fancy going on here. I just combined some fancy tric
 
 ## Future Improvements
 * Option to change output format
+* Offer some statistics from the photos like how much space could be saved, how many dupes there are, identify clusters of dupes to surface any events that may have caused them.
