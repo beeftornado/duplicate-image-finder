@@ -8,6 +8,10 @@ class HumanFormat(base.BaseFormatter):
     def output(self, data):
         assert type(data) is ListType, "data is not a list"
 
+        if not len(data):
+            print "No results."
+            return
+
         # List the images that are similar to each other
         for similar in data:
             assert isinstance(similar, base.OutputRecord), "record is not instance of OutputRecord"
