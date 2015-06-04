@@ -7,7 +7,7 @@ This is a python script so requires python 2.7 or higher. While it was tested on
 ```sh
 usage: app.py [-h] [-c CONFIDENCE_THRESHOLD] [--cpus CPUS]
               [-d DIR | --osxphotos] [-d2 COMPARE_DIR] [-f OUTPUT_FORMAT]
-              [--index]
+              [--index] [--inverse]
 
 Identify duplicate or very similar images in large libraries on the hard
 drive.
@@ -32,6 +32,8 @@ optional arguments:
                         (choices: human, json)
   --index               only index the photos and skip comparison and output
                         steps
+  --inverse             instead of picking out duplicates, identify photos
+                        that are different
 ```
 
 ## Description

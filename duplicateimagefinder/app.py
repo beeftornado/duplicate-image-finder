@@ -241,8 +241,12 @@ def main(*args, **kwargs):
             dist = ImageUtils.hamming_score(hash1, hash2)
             similarity = (64 - dist) * 100 / 64
 
-            if similarity > confidence_threshold:
-                similar_pairs.append(OutputRecord(image_path, image_path2, dist, similarity))
+            if not inverse:
+                if similarity > confidence_threshold:
+                    similar_pairs.append(OutputRecord(image_path, image_path2, dist, similarity))
+            else:
+                if similarity <= confidence_threshold:
+                    similar_pairs.append(OutputRecord(image_path, image_path2, dist, similarity))
 
     # Print the results
     outputter_for_format(output).output(similar_pairs)
@@ -258,7 +262,8 @@ if __name__ == '__main__':
         'cpus': cpu_count(),
         'output': Formats.HUMAN_READABLE,
         'only_index': False,
-        'compare_to': None
+        'compare_to': None,
+        'inverse': False,
     }
     locals().update(defaults)
 
@@ -281,6 +286,8 @@ if __name__ == '__main__':
                         help='how do you want the list of photos presented to you (choices: %(choices)s)')
     parser.add_argument('--index',
                        help='only index the photos and skip comparison and output steps', action='store_true')
+    parser.add_argument('--inverse', action='store_true',
+                        help='instead of picking out duplicates, identify photos that are different')
 
     args = parser.parse_args()
     if args.confidence_threshold:
@@ -297,6 +304,8 @@ if __name__ == '__main__':
         only_index = args.index
     if args.compare_to:
         compare_to = args.compare_to
+    if args.inverse:
+        inverse = args.inverse
 
     main(**locals())
 
