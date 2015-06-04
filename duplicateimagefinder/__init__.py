@@ -4,7 +4,7 @@ __all__ = [
 ]
 
 __title__ = "DuplicateImageFinder"
-__summary__ = "Identify duplicate images in large libraries on the hard drive."
+__summary__ = "Identify duplicate or very similar images in large libraries on the hard drive."
 __uri__ = ""
 
 __version__ = "0.1"

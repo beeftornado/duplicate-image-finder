@@ -42,8 +42,15 @@ class ImageUtils(object):
         except ImageHash.DoesNotExist:
             pass
         except ImageHash.MultipleDocumentsReturned:
-            cls.persistent_store.delete(ImageHash({'name': filename}))
-            raise
+            cls.backend_lock.acquire()
+            print "Multiple cache entries found for {}".format(filename)
+            print "Trying to clean it up, but it problem persist you may need to delete the cache."
+            entries = cls.persistent_store.filter(ImageHash, {'name': filename})
+            print "Deleting {} entries".format(len(entries))
+            entries.delete()
+            cls.persistent_store.commit()
+            cls.backend_lock.release()
+            pass
         return None
 
     @classmethod
@@ -55,6 +62,8 @@ class ImageUtils(object):
         hash, we have no way of knowing whether it is new or not so this method checks the last modified time
         stamp and only does the save if it is stale.
         """
+        if key is None or value is None:
+            return
 
         current_mtime = os.stat(key).st_mtime
         should_save_record = True
@@ -63,7 +72,10 @@ class ImageUtils(object):
         i = cls.lookup_file(key)
         if i:
             if i.created != current_mtime:
+                cls.backend_lock.acquire()
                 cls.persistent_store.delete(i)
+                cls.persistent_store.commit()
+                cls.backend_lock.release()
             else:
                 should_save_record = False
 
@@ -124,14 +136,20 @@ def main(*args, **kwargs):
 
     # Find all files under directory
     images = []
-    for root, dirnames, filenames in os.walk(start_dir):
-        for filename in fnmatch.filter(filenames, '*.*'):
-            # Don't include any thumbnail or other junk from iPhoto/Photos
-            if not '.photoslibrary' in root or 'Masters' in root:
-                images.append(os.path.join(root, filename))
+    for d in (start_dir, compare_to):
+        if d:
+            for root, dirnames, filenames in os.walk(d):
+                for filename in fnmatch.filter(filenames, '*.*'):
+                    # Don't include any thumbnail or other junk from iPhoto/Photos
+                    if not '.photoslibrary' in root or 'Masters' in root:
+                        if not str(filename).startswith('.') and not str(filename).endswith('.CR2'):
+                            images.append(os.path.join(root, filename))
 
     file_count = len(images)
-    print "%d files to process in %s" % (file_count, start_dir)
+    if not compare_to:
+        print "%d files to process in %s" % (file_count, start_dir)
+    else:
+        print "Comparing %d images between %s and %s" % (file_count, start_dir, compare_to)
 
     if file_count == 0:
         print "No images found"
@@ -153,7 +171,7 @@ def main(*args, **kwargs):
             worker_results.append(worker_pool.apply_async(MethodProxy(ImageUtils, ImageUtils.hash), [image_path, image_path],
                                     callback=new_callback_function))
 
-    # This block basically prints out the progress os hashing is done and allows graceful exit if user quits
+    # This block basically prints out the progress until hashing is done and allows graceful exit if user quits
     try:
         done, elapsed, total, started = 0, 0, len(worker_results), time.time()
         worker_pool.close()
@@ -186,6 +204,9 @@ def main(*args, **kwargs):
     print ""
     print "Comparing the images..."
 
+    target_dir1 = os.path.expanduser(start_dir)
+    target_dir2 = os.path.expanduser(compare_to) if compare_to else None
+
     # Compare each image to every other image
     for idx, image_path in enumerate(tqdm(images)):
 
@@ -199,10 +220,16 @@ def main(*args, **kwargs):
             continue
 
         # Compare to all images following
-        for image_path2 in images[idx + 1:]:
+        for jdx in xrange(idx + 1, len(images)):
+            image_path2 = images[jdx]
 
             # Skip same image paths if it happens
             if image_path == image_path2:
+                continue
+
+            # If comparing two directories instead of one to itself, then check the images belong to different parents
+            if compare_to and any([all([str(image_path).startswith(target_dir1), str(image_path2).startswith(target_dir1)]),
+                                   all([str(image_path).startswith(target_dir2), str(image_path2).startswith(target_dir2)])]):
                 continue
 
             hash2 = ImageUtils.hash(image_path2, image_path2)
@@ -220,7 +247,7 @@ def main(*args, **kwargs):
     # Print the results
     outputter_for_format(output).output(similar_pairs)
 
-    print ""
+    print '\n'
 
 
 if __name__ == '__main__':
@@ -231,25 +258,27 @@ if __name__ == '__main__':
         'cpus': cpu_count(),
         'output': Formats.HUMAN_READABLE,
         'only_index': False,
+        'compare_to': None
     }
     locals().update(defaults)
 
     parser = argparse.ArgumentParser(description=__summary__)
 
-    parser.add_argument('-c', '--confidence', dest='confidence_threshold', type=int,
-                        help='at what percent (1-100) similarity should photos be flagged (default {})'.format(
-                            defaults['confidence_threshold']))
-    parser.add_argument('--cpus', type=int,
-                        help='override number of cpu cores to use, default is to utilize all of them (default {})'.format(
-                            defaults['cpus']
-                        ))
+    parser.add_argument('-c', '--confidence', dest='confidence_threshold', type=int, default=defaults['confidence_threshold'],
+                        help='at what percent (1-100) similarity should photos be flagged (default: %(default)s)')
+    parser.add_argument('--cpus', type=int, default=defaults['cpus'],
+                        help='override number of cpu cores to use, default is to utilize all of them (default: %(default)s)')
     group = parser.add_mutually_exclusive_group()
-    group.add_argument('-d', '--directory', dest='start_dir', type=str,
+    group.add_argument('-d', '--directory', dest='start_dir', type=str, metavar='DIR',
                        help='folder to start looking for photos')
     group.add_argument('--osxphotos',
                        help='scan the Photos app library on Mac', action='store_true')
-    parser.add_argument('-f', '--format',
-                        help='how do you want the list of photos presented to you (human/default, json, csv, table)')
+    parser.add_argument('-d2', '--compare_to', type=str, metavar='COMPARE_DIR',
+                        help='By default, images in the directory (-d) are compared to each other, but if you intend ' +
+                             'on merging two folders, you can instead compare the images in one directory (-d) to those ' +
+                             'in another (-d2)')
+    parser.add_argument('-f', '--format', metavar='OUTPUT_FORMAT', choices=Formats.cmd_choices(),
+                        help='how do you want the list of photos presented to you (choices: %(choices)s)')
     parser.add_argument('--index',
                        help='only index the photos and skip comparison and output steps', action='store_true')
 
@@ -266,6 +295,8 @@ if __name__ == '__main__':
         output = Formats.from_option(args.format)
     if args.index:
         only_index = args.index
+    if args.compare_to:
+        compare_to = args.compare_to
 
     main(**locals())
 

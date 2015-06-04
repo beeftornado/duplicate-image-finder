@@ -15,3 +15,7 @@ class Formats(object):
         elif o == 'csv': return cls.CSV
         elif o == 'table': return cls.ASCII_TABLE
         else: return cls.HUMAN_READABLE
+
+    @staticmethod
+    def cmd_choices():
+        return ('human', 'json')
