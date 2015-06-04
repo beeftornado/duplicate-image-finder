@@ -58,6 +58,7 @@ Too much noise, you only want photos that are almost identical
 
 ```
 ./app.py -d ~/Pictures -c 98
+```
 
 ### OSX Specific: Specifically searching Photos.app library
 
