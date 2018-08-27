@@ -1,6 +1,15 @@
 # Duplicate Image Finder
 Identifies similar pictures on your local computer
 
+## Installation
+
+```sh
+git clone https://github.com/beeftornado/duplicate-image-finder.git
+cd duplicate-image-finder
+pip install -r requirements.txt  # or pip install -e .
+duplicateimagefinder/app.py --help
+```
+
 ## Usage
 This is a python script so requires python 2.7 or higher. While it was tested on OSX 10.10.3, it should work on any system that has Python installed.
 
